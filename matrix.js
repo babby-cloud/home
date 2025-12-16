@@ -48,17 +48,67 @@
   // Text animation class
   class RickText {
     constructor(text, mode) {
-      this.text = text;
+      this.originalText = text;
       this.mode = mode; // 'fall', 'static', 'glitch'
-      this.x = Math.random() * (window.innerWidth - 400) + 50;
-      this.y = mode === 'fall' ? -50 : Math.random() * (window.innerHeight - 100) + 50;
       this.alpha = 0;
       this.fadeIn = true;
       this.life = 0;
       this.maxLife = mode === 'static' ? 180 : 300; // frames
       this.fallSpeed = 0.5 + Math.random() * 1;
       this.glitchChars = [];
+      
+      // Wrap text for smaller screens
+      this.wrapText(text);
+      
+      // Position after wrapping so we know the dimensions
+      const textWidth = this.getTextWidth();
+      this.x = Math.random() * Math.max(50, window.innerWidth - textWidth - 50) + 25;
+      this.y = mode === 'fall' ? -50 : Math.random() * (window.innerHeight - (this.lines.length * 20) - 100) + 50;
+      
       this.initGlitch();
+    }
+
+    wrapText(text) {
+      const maxWidth = Math.min(500, window.innerWidth - 100); // Max width with padding
+      const words = text.split(' ');
+      this.lines = [];
+      let currentLine = '';
+
+      // Create a temporary canvas context to measure text
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.font = '16px monospace';
+
+      for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + (currentLine ? ' ' : '') + words[i];
+        const metrics = tempCtx.measureText(testLine);
+        
+        if (metrics.width > maxWidth && currentLine) {
+          // Line is too long, push current line and start new one
+          this.lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      
+      // Push the last line
+      if (currentLine) {
+        this.lines.push(currentLine);
+      }
+    }
+
+    getTextWidth() {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.font = '16px monospace';
+      
+      let maxWidth = 0;
+      for (let line of this.lines) {
+        const width = tempCtx.measureText(line).width;
+        if (width > maxWidth) maxWidth = width;
+      }
+      return maxWidth;
     }
 
     initGlitch() {
@@ -75,8 +125,9 @@
       }
       
       const positions = new Set();
+      const totalLength = this.lines.join('').length;
       while (positions.size < glitchCount) {
-        positions.add(Math.floor(Math.random() * this.text.length));
+        positions.add(Math.floor(Math.random() * totalLength));
       }
       this.glitchPositions = Array.from(positions);
     }
@@ -109,27 +160,40 @@
       ctx.font = '16px monospace';
       ctx.textAlign = 'left';
       
-      let displayText = this.text.split('');
-      
-      // Replace some characters with matrix symbols
-      this.glitchPositions.forEach(pos => {
-        displayText[pos] = chars.charAt(Math.floor(Math.random() * chars.length));
-      });
+      const lineHeight = 20;
+      let charOffset = 0;
 
-      // Draw shadow for better visibility
-      ctx.fillStyle = `rgba(0, 0, 0, ${this.alpha * 0.8})`;
-      ctx.fillText(displayText.join(''), this.x + 2, this.y + 2);
+      // Draw each line
+      this.lines.forEach((line, lineIndex) => {
+        const yPos = this.y + (lineIndex * lineHeight);
+        let displayText = line.split('');
+        
+        // Replace some characters with matrix symbols based on global position
+        const lineGlitchPositions = this.glitchPositions
+          .filter(pos => pos >= charOffset && pos < charOffset + line.length)
+          .map(pos => pos - charOffset);
+        
+        lineGlitchPositions.forEach(pos => {
+          displayText[pos] = chars.charAt(Math.floor(Math.random() * chars.length));
+        });
 
-      // Draw main text
-      ctx.fillStyle = `rgba(170, 255, 180, ${this.alpha})`;
-      ctx.fillText(displayText.join(''), this.x, this.y);
+        // Draw shadow for better visibility
+        ctx.fillStyle = `rgba(0, 0, 0, ${this.alpha * 0.8})`;
+        ctx.fillText(displayText.join(''), this.x + 2, yPos + 2);
 
-      // Highlight glitched characters
-      ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha * 0.9})`;
-      this.glitchPositions.forEach(pos => {
-        const beforeText = displayText.slice(0, pos).join('');
-        const charWidth = ctx.measureText(beforeText).width;
-        ctx.fillText(displayText[pos], this.x + charWidth, this.y);
+        // Draw main text
+        ctx.fillStyle = `rgba(170, 255, 180, ${this.alpha})`;
+        ctx.fillText(displayText.join(''), this.x, yPos);
+
+        // Highlight glitched characters
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha * 0.9})`;
+        lineGlitchPositions.forEach(pos => {
+          const beforeText = displayText.slice(0, pos).join('');
+          const charWidth = ctx.measureText(beforeText).width;
+          ctx.fillText(displayText[pos], this.x + charWidth, yPos);
+        });
+
+        charOffset += line.length;
       });
 
       ctx.restore();
