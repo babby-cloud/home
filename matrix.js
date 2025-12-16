@@ -2,6 +2,22 @@
 (function(){
   const canvas = document.getElementById('matrix');
   const ctx = canvas.getContext('2d');
+  // Prevent pinch-zoom and double-tap zoom on mobile: block multi-touch and gesture events
+  try{
+    function preventPinch(e){ if(e.touches && e.touches.length > 1) e.preventDefault(); }
+    document.addEventListener('touchstart', preventPinch, {passive:false});
+    document.addEventListener('touchmove', preventPinch, {passive:false});
+    // WebKit gesture events
+    document.addEventListener('gesturestart', (e)=>e.preventDefault(), {passive:false});
+    document.addEventListener('gesturechange', (e)=>e.preventDefault(), {passive:false});
+    // prevent double-tap to zoom
+    let lastTouch = 0;
+    document.addEventListener('touchend', function(e){
+      const now = Date.now();
+      if(now - lastTouch <= 300){ e.preventDefault(); }
+      lastTouch = now;
+    }, {passive:false});
+  }catch(e){ console.debug('Matrix: could not install pinch-zoom prevention handlers', e); }
   const dpr = window.devicePixelRatio || 1;
   // CSS pixel logical size
   let W = window.innerWidth;
