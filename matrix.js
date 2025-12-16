@@ -52,6 +52,18 @@
   setupCanvas();
   initSizes();
 
+  // If reduced-motion is set but this is a mobile device, try a safe auto-start after a short delay
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent) || window.innerWidth < 720;
+  if(reduce && isMobile){
+    console.info('Matrix: reduced-motion detected on mobile — attempting a safe auto-start in 700ms.');
+    setTimeout(()=>{
+      if(!running && document.visibilityState === 'visible'){
+        console.info('Matrix: overriding reduced-motion and starting animation (mobile override).');
+        running = true; loop();
+      }
+    }, 700);
+  }
+
   function draw(){
     // translucent black to create the trailing effect
     ctx.fillStyle = 'rgba(0,0,0,'+alphaFade+')';
