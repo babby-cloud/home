@@ -5,8 +5,9 @@
   // Prevent pinch-zoom and double-tap zoom on mobile: block multi-touch and gesture events
   try{
     function preventPinch(e){ if(e.touches && e.touches.length > 1) e.preventDefault(); }
-    document.addEventListener('touchstart', preventPinch, {passive:false});
-    document.addEventListener('touchmove', preventPinch, {passive:false});
+    // use capture:true for broader interception on some browsers (Opera mobile)
+    document.addEventListener('touchstart', preventPinch, {passive:false, capture:true});
+    document.addEventListener('touchmove', preventPinch, {passive:false, capture:true});
     // WebKit gesture events
     document.addEventListener('gesturestart', (e)=>e.preventDefault(), {passive:false});
     document.addEventListener('gesturechange', (e)=>e.preventDefault(), {passive:false});
@@ -17,6 +18,17 @@
       if(now - lastTouch <= 300){ e.preventDefault(); }
       lastTouch = now;
     }, {passive:false});
+    // prevent dblclick events that may trigger zoom
+    document.addEventListener('dblclick', (e)=>{ e.preventDefault(); }, {passive:false, capture:true});
+
+    // pointer-based multi-touch prevention (covers browsers using Pointer Events, including some Opera builds)
+    const activePointers = new Set();
+    document.addEventListener('pointerdown', (e)=>{
+      activePointers.add(e.pointerId);
+      if(activePointers.size > 1){ e.preventDefault(); }
+    }, {passive:false, capture:true});
+    document.addEventListener('pointerup', (e)=>{ activePointers.delete(e.pointerId); }, {passive:false, capture:true});
+    document.addEventListener('pointercancel', (e)=>{ activePointers.delete(e.pointerId); }, {passive:false, capture:true});
   }catch(e){ console.debug('Matrix: could not install pinch-zoom prevention handlers', e); }
   const dpr = window.devicePixelRatio || 1;
   // CSS pixel logical size
